@@ -1,0 +1,107 @@
+---
+title: "MSCA 31006 Fin Proj Holt-Winters"
+author: "Lev Tyomkin"
+date: "7/13/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+setwd("~/Desktop/MScA/Time Series/Assignments/Final Project")
+```
+
+Let's begin by loading the data.
+
+```{r}
+library(fpp)
+library(tseries)
+library(ggplot2)
+library(forecast)
+
+library(expsmooth)
+
+
+passenger = get(load("passenger.rds"))
+str(passenger)
+head(passenger)
+
+```
+
+
+Now, we can begin to make this into a time series.  I did domestic here.
+
+```{r}
+ps_ts = ts(as.numeric(gsub(",", "", passenger[,3])), start=c(2002, 10), end=c(2020, 4), frequency=12)
+
+str(ps_ts)
+plot(ps_ts, ylim=c(0,99000000))
+```
+
+I am going to cut out 2020, as this year has not been what anyone expected, wanted, or hoped for.
+
+```{r}
+ps_ts = window(ps_ts, start=c(2002, 10), end=c(2019, 12))
+ps_ts_train = window(ps_ts, start=c(2002, 10), end=c(2018, 12))
+ps_ts_test = window(ps_ts, start=c(2019, 1), end=c(2019, 12))
+plot(ps_ts)
+```
+
+Now, we can try some Holt Winters models to get a sense of which work best. Forecasting next 12 months
+
+```{r}
+# Decomposition
+hw_add <- decompose(ps_ts, type="additive")
+plot(hw_add)
+
+hw_mult <- decompose(ps_ts, type="multiplicative")
+plot(hw_mult)
+
+# Seasonal Holt Winter
+hw_add <- hw(ps_ts, seasonal = "additive", h=12)
+summary(hw_add)
+plot(hw_add)
+checkresiduals(hw_add)
+
+hw_multi <- hw(ps_ts, seasonal = "multiplicative", h=12)
+summary(hw_multi)
+plot(hw_multi)
+checkresiduals(hw_multi)
+
+# With exponential smoothing
+hw_Damped_add <- hw(ps_ts, seasonal = "additive", h=12, damped = TRUE)
+summary(hw_Damped_add)
+plot(hw_Damped_add)
+checkresiduals(hw_Damped_add)
+
+hw_Damped_multi <- hw(ps_ts, seasonal = "multiplicative", h=12, damped = TRUE)
+summary(hw_Damped_multi)
+plot(hw_Damped_multi)
+checkresiduals(hw_Damped_multi)
+
+plot(hw_add)
+plot(hw_multi)
+plot(hw_Damped_add)
+plot(hw_Damped_multi)
+
+# Smoothing parameters and initials states
+hw_add$model
+hw_multi$model
+hw_Damped_add$model
+hw_Damped_multi$model
+
+# Model accuracy
+accuracy(hw_add) # RMSE = 1141814
+accuracy(hw_multi) # RMSE = 1143856
+accuracy(hw_Damped_add) # RMSE = 1095931
+accuracy(hw_Damped_multi) # RMSE = 1063227 (Lowest)
+```
+
+The appropriate  Holt-Winters method for this data set is multiplicative because we observe data with a positive trend but with seasonality that appears to increase over time. The additive method would be more appropriate if we had observed a constant seasonality.
+
+Lower values of RMSE indicate better fit; therefore, I will prefer our last model (linear trend with miltiplicative seasonality and damping) because this fit had the lowest RMSE.
+
+Based on the ACF output, we can see some outlier values. The residuals are not perfect white noise so we may want to revisit the inputs for our model to see if this fit can be further improved.
+
