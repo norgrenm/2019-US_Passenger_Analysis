@@ -25,9 +25,7 @@ library(forecast)
 passenger = get(load("passenger.rds"))
 pred <- read.csv("OLS project independent variables.csv")
 head(passenger)
-
-
-
+head(pred)
 ```
 
 
@@ -50,8 +48,12 @@ plot(ps_ts)
 ```
 
 
-```{r}
+
 checkresiduals(ps_ts)##
+
+tsdisplay(ps_ts)
+
+acf(ps_ts)
 
 pacf(ps_ts)##
 
@@ -69,7 +71,7 @@ kpss.test(first_diff_ps_ts_train)##
 
 ## The KPSS test of the 1st order differencing yields a p_value of 0.03 below the threshold of 0.05 rejecting the null hypothesis and indicating that the series is not stationary.##
 
-adf.test(first_diff_ps_ts_train)## 
+adf.test(first_diff_ps_ts_train)##
 
 ##A Augmented Dickey-Fuller test also indicates the series in 1st difference is no stationary
 
@@ -89,6 +91,15 @@ unemploymentrate <- ts(as.numeric(gsub(",", "", pred[,3])), start=c(2002, 10), e
 str(unemploymentrate)
 plot(unemploymentrate)
 
+inverse <- -1*unemploymentrate
+plot(inverse)
+
+plot(inverse) + plot(first_diff_ps_ts_train)
+
+
+cor(ps_ts_train, unemploymentrate)       
+
+
 
 ols_model <- lm(ps_ts_train ~ unemploymentrate)
 show(ols_model)  
@@ -100,14 +111,14 @@ unemploymentrate_for_diff <- ts(as.numeric(gsub(",", "", pred[,3])), start=c(200
 ols_1st_diff_model <- lm(first_diff_ps_ts_train ~ unemploymentrate_for_diff)
 show(ols_1st_diff_model)  
 summary(ols_1st_diff_model)
-plot(ols_1st_diff_model)
+plot(ols_1st_diff_model$residuals)
 
 
 unemploymentrate_for_sec_diff <- ts(as.numeric(gsub(",", "", pred[,3])), start=c(2002, 10), end=c(2017, 11), frequency=12)
 ols_2nd_diff_model <- lm(sec_diff_ps_ts_train ~ unemploymentrate_for_sec_diff)
 show(ols_2nd_diff_model)  
 summary(ols_2nd_diff_model)
-plot(ols_2nd_diff_model)
+plot(ols_2nd_diff_model$residuals)
 
 
 ##### Maybe do a Johansen Test COINTEGRATION test. coin_test <- ca.jo() #####
