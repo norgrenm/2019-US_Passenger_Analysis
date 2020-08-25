@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-setwd("~/Desktop/MScA/Time Series/Assignments/Final Project")
+setwd("C:/Users/MAN/OneDrive - The University of Chicago/ZZ_GitHub/TimeSeries-US_Passenger_Analysis")
 ```
 
 Let's begin by loading the data.
