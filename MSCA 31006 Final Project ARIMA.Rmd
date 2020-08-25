@@ -61,25 +61,27 @@ kpss.test(ps_ts)##
 
 ##The Kwiatkowski–Phillips–Schmidt–Shin (KPSS) indicates in the Null hypothesis that the time series is stationary. The KPSS test of the domestic flight passengers data in levels, indicates that the series is not stationary, with a p_value of 0.1 Failing to rejct the null hypothesis. Consequently not suitable for modeling. Therefore differencing is required 
 
-first_diff_ps_ts_train <- diff(ps_ts_train, lag = 12)##
+first_difference <- diff(ps_ts_train, lag = 12)##
 
-plot(first_diff_ps_ts_train)## 
+plot(first_difference)## 
 
 ##The plot of the first difference of ps_ts_train appear to be non-stationary. 
 
-kpss.test(first_diff_ps_ts_train)## 
+kpss.test(first_difference)## 
 
 ## The KPSS test of the 1st order differencing yields a p_value of 0.03 below the threshold of 0.05 rejecting the null hypothesis and indicating that the series is not stationary.##
 
-adf.test(first_diff_ps_ts_train)##
+adf.test(first_difference)##
 
 ##A Augmented Dickey-Fuller test also indicates the series in 1st difference is no stationary
 
-sec_diff_ps_ts_train <- diff(first_diff_ps_ts_train, lag = 1)##
+sec_difference <- diff(first_difference, lag = 1)##
 
-plot(sec_diff_ps_ts_train)##
+plot(sec_difference)##
 
-kpss.test(sec_diff_ps_ts_train)## 
+kpss.test(sec_difference)## 
+
+adf.test(sec_difference)##
 
 # A plot of the second differencing show the the series to be stationary, and the KPSS test points to the same conclusion.
 
@@ -98,7 +100,7 @@ plot(inverse) + plot(first_diff_ps_ts_train)
 
 
 cor(ps_ts_train, unemploymentrate)       
-
+cor(ps_ts, pred[,3])
 
 
 ols_model <- lm(ps_ts_train ~ unemploymentrate)
