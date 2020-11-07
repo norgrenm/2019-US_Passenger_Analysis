@@ -1,0 +1,237 @@
+---
+title: "MSCA 31006 Fin Proj ARIMA"
+author: "Matthew Fligiel"
+date: "August 3, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+setwd("~/MSCA/MSCA 31006")
+```
+
+Let's begin by loading the data.
+
+```{r}
+library(TSA)
+library(fpp)
+library(tseries)
+library(forecast)
+
+
+passenger = get(load("passenger.rds"))
+pred <- read.csv("OLS project independent variables.csv")
+head(passenger)
+```
+
+
+```{r}
+ps_ts = ts(as.numeric(gsub(",", "", passenger[,3])), start=c(2002, 10), end=c(2019, 12), frequency=12)
+v_ff = ts(as.numeric(gsub(",", "", pred[,2])), start=c(2002, 10), end=c(2019, 12), frequency=12)
+v_un = ts(as.numeric(gsub(",", "", pred[,3])), start=c(2002, 10), end=c(2019, 12), frequency=12)
+v_ps = ts(as.numeric(gsub(",", "", pred[,4])), start=c(2002, 10), end=c(2019, 12), frequency=12)
+
+
+cbind(ps_ts, v_ff, v_un, v_ps)
+
+autoplot(ps_ts)
+
+cor(ps_ts,v_ps)
+ps_tsd <- diff(log(ps_ts))
+v_ffd <- diff(log(v_ff))
+v_und <- diff(log(v_un))
+v_psd <- diff(log(v_ps))
+
+print(cor(ps_ts,v_ff))
+print(cor(ps_ts,v_und))
+
+
+cor(ps_tsd,v_ffd)
+
+
+```
+
+
+Now, we can begin to make this into a time series.  I did domestic here.
+
+```{r}
+ps_ts = ts(as.numeric(gsub(",", "", passenger[,3])), start=c(2002, 10), end=c(2020, 4), frequency=12)
+
+str(ps_ts)
+plot(ps_ts, ylim=c(0,99000000))
+```
+
+I am going to cut out 2020, as this year has not been what anyone expected, wanted, or hoped for.
+
+```{r}
+ps_ts = window(ps_ts, start=c(2002, 10), end=c(2019, 12))
+ps_ts_train = window(ps_ts, start=c(2002, 10), end=c(2018, 12))
+ps_ts_test = window(ps_ts, start=c(2019, 1), end=c(2019, 12))
+plot(ps_ts)
+```
+
+
+```{r}
+Dom_FFD <- tslm(ps_tsd~v_ffd)
+summary(Dom_FFD)
+```
+
+```{r}
+Dom_UND <- tslm(ps_tsd~v_und)
+summary(Dom_UND)
+```
+
+```{r}
+Dom_PSD <- tslm(ps_tsd~v_psd)
+summary(Dom_PSD)
+```
+
+```{r}
+KitchenSink <- tslm(ps_tsd~cbind(v_und,v_psd))
+summary(KitchenSink)
+autoplot(v_und)
+checkresiduals(KitchenSink)
+```
+
+```{r}
+autoplot(v_d)
+```
+
+
+checkresiduals(ps_ts)##
+
+tsdisplay(ps_ts)
+
+acf(ps_ts)
+
+pacf(ps_ts)##
+
+kpss.test(ps_ts)## 
+
+##The Kwiatkowski–Phillips–Schmidt–Shin (KPSS) indicates in the Null hypothesis that the time series is stationary. The KPSS test of the domestic flight passengers data in levels, indicates that the series is not stationary, with a p_value of 0.1 Failing to rejct the null hypothesis. Consequently not suitable for modeling. Therefore differencing is required 
+
+first_difference <- diff(ps_ts_train, lag = 12)##
+
+plot(first_difference)## 
+
+##The plot of the first difference of ps_ts_train appear to be non-stationary. 
+
+kpss.test(first_difference)## 
+
+## The KPSS test of the 1st order differencing yields a p_value of 0.03 below the threshold of 0.05 rejecting the null hypothesis and indicating that the series is not stationary.##
+
+adf.test(first_difference)##
+
+##A Augmented Dickey-Fuller test also indicates the series in 1st difference is no stationary
+
+sec_difference <- diff(first_difference, lag = 1)##
+
+plot(sec_difference)##
+
+kpss.test(sec_difference)## 
+
+adf.test(sec_difference)##
+
+# A plot of the second differencing show the the series to be stationary, and the KPSS test points to the same conclusion.
+
+eacf(first_diff_ps_ts)##
+
+## OLS REGRESSION ##
+
+unemploymentrate <- ts(as.numeric(gsub(",", "", pred[,3])), start=c(2002, 10), end=c(2018, 12), frequency=12)
+str(unemploymentrate)
+plot(unemploymentrate)
+
+inverse <- -1*unemploymentrate
+plot(inverse)
+
+plot(inverse) + plot(first_diff_ps_ts_train)
+
+
+cor(ps_ts_train, unemploymentrate)       
+cor(ps_ts, pred[,3])
+
+
+ols_model <- lm(ps_ts_train ~ unemploymentrate)
+show(ols_model)  
+summary(ols_model)
+plot(ols_model$residuals)
+
+
+unemploymentrate_for_diff <- ts(as.numeric(gsub(",", "", pred[,3])), start=c(2002, 10), end=c(2017, 12), frequency=12)
+ols_1st_diff_model <- lm(first_diff_ps_ts_train ~ unemploymentrate_for_diff)
+show(ols_1st_diff_model)  
+summary(ols_1st_diff_model)
+plot(ols_1st_diff_model$residuals)
+
+
+unemploymentrate_for_sec_diff <- ts(as.numeric(gsub(",", "", pred[,3])), start=c(2002, 10), end=c(2017, 11), frequency=12)
+ols_2nd_diff_model <- lm(sec_diff_ps_ts_train ~ unemploymentrate_for_sec_diff)
+show(ols_2nd_diff_model)  
+summary(ols_2nd_diff_model)
+plot(ols_2nd_diff_model$residuals)
+
+
+##### Maybe do a Johansen Test COINTEGRATION test. coin_test <- ca.jo() #####
+
+```
+
+Now, we can try an auto arima to get a sense of which to use.
+
+```{r}
+ps_ts.auto.arima = auto.arima(ps_ts_train, trace = TRUE)
+```
+
+```{r}
+#look at the auto arima
+summary(ps_ts.auto.arima)
+checkresiduals(ps_ts.auto.arima)
+```
+
+This looks pretty good!  I think that it is worth trying to reduce each of the AR/MA parameters by 1 and see if it is significantly worse.
+
+```{r}
+evals = function (model) {
+  print(paste("Training Stats - AIC:", model$aic,", AICc:", model$aicc, ", BIC:", model$bic))
+}
+
+#baseline
+print("baseline")
+psts_auto_fcst = forecast(ps_ts.auto.arima, h=12)
+accuracy(psts_auto_fcst$mean, ps_ts_test)
+evals(ps_ts.auto.arima)
+cat("\n")
+
+#changes
+print("ARIMA(2,1,2)(1,1,1)[12]")
+ps_ts.arima.212.111 = Arima(ps_ts_train, order=c(2,1,2), seasonal=c(1,1,1))
+psts_212.111_fcst = forecast(ps_ts.arima.212.111, h=12)
+accuracy(psts_212.111_fcst$mean, ps_ts_test)
+evals(ps_ts.arima.212.111)
+cat("\n")
+
+print("ARIMA(2,1,2)(0,1,2)[12]")
+ps_ts.arima.212.012 = Arima(ps_ts_train, order=c(2,1,2), seasonal=c(0,1,2))
+psts_212.012_fcst = forecast(ps_ts.arima.212.012, h=12)
+accuracy(psts_212.012_fcst$mean, ps_ts_test)
+evals(ps_ts.arima.212.012)
+cat("\n")
+
+print("ARIMA(2,1,1)(1,1,2)[12]")
+ps_ts.arima.211.112 = Arima(ps_ts_train, order=c(2,1,1), seasonal=c(1,1,2))
+psts_211.112_fcst = forecast(ps_ts.arima.211.112, h=12)
+accuracy(psts_211.112_fcst$mean, ps_ts_test)
+evals(ps_ts.arima.211.112)
+cat("\n")
+
+print("ARIMA(1,1,2)(1,1,2)[12]")
+ps_ts.arima.112.112 = Arima(ps_ts_train, order=c(1,1,2), seasonal=c(1,1,2))
+psts_112.112_fcst = forecast(ps_ts.arima.112.112, h=12)
+accuracy(psts_112.112_fcst$mean, ps_ts_test)
+evals(ps_ts.arima.112.112)
+```
+
+The ARIMA (2,1,2)(0,1,2)[12] seems all around to be a better model, especially by BIC and AICc, so we will continue with it as our model. 
